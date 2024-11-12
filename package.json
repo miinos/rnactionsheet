@@ -1,5 +1,5 @@
 {
-  "name": "rnactionsheet",
+  "name": "@miinos/rnactionsheet",
   "version": "0.1.0",
   "description": "Native Action Sheet for React Native",
   "source": "./src/index.tsx",

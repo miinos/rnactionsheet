@@ -1,6 +1,5 @@
 import { StyleSheet, View, Text, Pressable } from 'react-native';
 import RNActionSheet from 'rnactionsheet';
-
 export default function App() {
   return (
     <View style={styles.container}>
