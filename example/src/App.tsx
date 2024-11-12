@@ -1,17 +1,25 @@
-import { useState, useEffect } from 'react';
-import { StyleSheet, View, Text } from 'react-native';
-import { multiply } from 'rnactionsheet';
+import { StyleSheet, View, Text, Pressable } from 'react-native';
+import RNActionSheet from 'rnactionsheet';
 
 export default function App() {
-  const [result, setResult] = useState<number | undefined>();
-
-  useEffect(() => {
-    multiply(3, 7).then(setResult);
-  }, []);
-
   return (
     <View style={styles.container}>
-      <Text>Result: {result}</Text>
+      <Pressable
+        onPress={() => {
+          RNActionSheet.showActionSheetWithOptions(
+            {
+              options: ['Delete', 'Save', 'Cancel'],
+              destructiveButtonIndex: 0,
+              cancelButtonIndex: 2,
+            },
+            (index) => {
+              console.log(index);
+            }
+          );
+        }}
+      >
+        <Text>Open ActionSheet</Text>
+      </Pressable>
     </View>
   );
 }
