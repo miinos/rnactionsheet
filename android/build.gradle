@@ -6,7 +6,7 @@ buildscript {
   }
 
   dependencies {
-    classpath "com.android.tools.build:gradle:7.2.1"
+    classpath "com.android.tools.build:gradle:8.3.2"
   }
 }
 
@@ -25,12 +25,24 @@ if (isNewArchitectureEnabled()) {
   apply plugin: "com.facebook.react"
 }
 
-def getExtOrDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["Rnactionsheet_" + name]
+def getExtOrDefault(name, defaultValue = null) {
+  if (rootProject.ext.has(name)) {
+    return rootProject.ext.get(name)
+  }
+  if (project.hasProperty("Rnactionsheet_" + name)) {
+    return project.properties["Rnactionsheet_" + name]
+  }
+  return defaultValue
 }
 
-def getExtOrIntegerDefault(name) {
-  return rootProject.ext.has(name) ? rootProject.ext.get(name) : (project.properties["Rnactionsheet_" + name]).toInteger()
+def getExtOrIntegerDefault(name, defaultValue = 0) {
+  if (rootProject.ext.has(name)) {
+    return rootProject.ext.get(name)
+  }
+  if (project.hasProperty("Rnactionsheet_" + name)) {
+    return (project.properties["Rnactionsheet_" + name]).toInteger()
+  }
+  return defaultValue
 }
 
 def supportsNamespace() {
@@ -58,7 +70,6 @@ android {
   defaultConfig {
     minSdkVersion getExtOrIntegerDefault("minSdkVersion")
     targetSdkVersion getExtOrIntegerDefault("targetSdkVersion")
-
   }
 
   buildTypes {
@@ -67,13 +78,14 @@ android {
     }
   }
 
-  lintOptions {
+  // `lint` replaces the deprecated `lintOptions` block (AGP 7.0+)
+  lint {
     disable "GradleCompatible"
   }
 
   compileOptions {
-    sourceCompatibility JavaVersion.VERSION_1_8
-    targetCompatibility JavaVersion.VERSION_1_8
+    sourceCompatibility JavaVersion.VERSION_17
+    targetCompatibility JavaVersion.VERSION_17
   }
 }
 
@@ -89,4 +101,3 @@ dependencies {
   implementation "com.facebook.react:react-native:+"
   implementation "com.google.android.material:material:1.12.0"
 }
-

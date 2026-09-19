@@ -1,19 +1,26 @@
 package com.miinosoft.rnactionsheet;
 
 import android.app.Activity;
+import android.graphics.Color;
+import android.util.TypedValue;
 import android.view.Gravity;
-import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.ReactContextBaseJavaModule;
-import com.facebook.react.bridge.ReactMethod;
-import com.facebook.react.bridge.Callback;
-import com.facebook.react.bridge.ReadableArray;
-import com.facebook.react.bridge.ReadableMap;
-import com.google.android.material.bottomsheet.BottomSheetDialog;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.graphics.Color;
+
+import androidx.annotation.NonNull;
+
+import com.facebook.react.bridge.Callback;
+import com.facebook.react.bridge.ReactApplicationContext;
+import com.facebook.react.bridge.ReactContextBaseJavaModule;
+import com.facebook.react.bridge.ReactMethod;
+import com.facebook.react.bridge.ReadableArray;
+import com.facebook.react.bridge.ReadableMap;
+import com.facebook.react.bridge.ReadableType;
+import com.google.android.material.bottomsheet.BottomSheetDialog;
+
+import java.util.concurrent.atomic.AtomicBoolean;
 
 public class RNActionSheetModule extends ReactContextBaseJavaModule {
     private final ReactApplicationContext reactContext;
@@ -23,70 +30,125 @@ public class RNActionSheetModule extends ReactContextBaseJavaModule {
         this.reactContext = reactContext;
     }
 
+    @NonNull
     @Override
     public String getName() {
         return "RNActionSheet";
     }
 
     @ReactMethod
-    public void showActionSheetWithOptions(ReadableMap optionss, final Callback onItemSelected) {
+    public void showActionSheetWithOptions(ReadableMap options, final Callback onItemSelected) {
         final Activity activity = getCurrentActivity();
 
-        if (activity == null) return;
+        if (activity == null) {
+            onItemSelected.invoke(-1);
+            return;
+        }
+
+        final AtomicBoolean callbackInvoked = new AtomicBoolean(false);
+
+        final int cancelButtonIndex = options.hasKey("cancelButtonIndex")
+                ? options.getInt("cancelButtonIndex")
+                : -1;
+
+        // Resolve default theme text color for Dark / Light mode compatibility
+        TypedValue typedValue = new TypedValue();
+        int defaultTextColor = Color.BLACK;
+        if (activity.getTheme().resolveAttribute(android.R.attr.textColorPrimary, typedValue, true)) {
+            defaultTextColor = typedValue.data;
+        }
+
+        // Tint color if specified
+        int tintColor = defaultTextColor;
+        if (options.hasKey("tintColor")) {
+            try {
+                tintColor = Color.parseColor(options.getString("tintColor"));
+            } catch (Exception ignored) {
+                tintColor = defaultTextColor;
+            }
+        }
+
+        // Destructive color: prefer ?attr/colorError from the Material theme
+        // so it respects the app's theme (including custom dark-mode palettes).
+        int destructiveColor = resolveColorAttr(activity, com.google.android.material.R.attr.colorError);
+        if (destructiveColor == 0) {
+            // Fallback if the host app does not use a Material theme
+            destructiveColor = Color.parseColor("#B00020");
+        }
+
+        // Ripple selectable background resource ID
+        TypedValue rippleValue = new TypedValue();
+        int selectableBackgroundResId = 0;
+        if (activity.getTheme().resolveAttribute(android.R.attr.selectableItemBackground, rippleValue, true)) {
+            selectableBackgroundResId = rippleValue.resourceId;
+        }
+
+        final int resolvedTextColor = tintColor;
+        final int resolvedDestructiveColor = destructiveColor;
+        final int dividerColor = (defaultTextColor & 0x00FFFFFF) | 0x1F000000;
 
         activity.runOnUiThread(() -> {
             BottomSheetDialog bottomSheetDialog = new BottomSheetDialog(activity);
             View bottomSheetView = LayoutInflater.from(activity).inflate(R.layout.bottom_sheet_layout, null);
 
-            // Setup title if provided
+            // Title
             TextView titleView = bottomSheetView.findViewById(R.id.bottom_sheet_title);
-            if (optionss.hasKey("title")) {
-                titleView.setText(optionss.getString("title"));
+            if (options.hasKey("title") && options.getString("title") != null) {
+                titleView.setText(options.getString("title"));
                 titleView.setVisibility(View.VISIBLE);
             } else {
                 titleView.setVisibility(View.GONE);
             }
-            // Setup message if provided
+
+            // Message
             TextView messageView = bottomSheetView.findViewById(R.id.bottom_sheet_message);
-            if (optionss.hasKey("message")) {
-                messageView.setText(optionss.getString("message"));
+            if (options.hasKey("message") && options.getString("message") != null) {
+                messageView.setText(options.getString("message"));
                 messageView.setVisibility(View.VISIBLE);
             } else {
                 messageView.setVisibility(View.GONE);
             }
 
-            // Setup options list
+            // Options list
             LinearLayout itemsContainer = bottomSheetView.findViewById(R.id.items_container);
-            if (optionss.hasKey("options") && optionss.getArray("options") != null) {
-                ReadableArray options = optionss.getArray("options");
-                int dest_index = optionss.getInt("destructiveButtonIndex");
-                int canel_index = optionss.getInt("cancelButtonIndex");
-                int color = Color.BLACK;
-                if(optionss.hasKey("tintColor")){
-                    color = Color.parseColor(optionss.getString("tintColor"));
-                }
-                for (int i = 0; i < options.size(); i++) {
-                    String option = options.getString(i);
+            if (options.hasKey("options") && options.getArray("options") != null) {
+                ReadableArray optionsArray = options.getArray("options");
+                int size = optionsArray.size();
+
+                for (int i = 0; i < size; i++) {
+                    String optionText = optionsArray.getString(i);
                     final int index = i;
 
-                    // Create option layout
+                    boolean isDisabled = isDisabledIndex(options, i);
+                    boolean isCancel = (i == cancelButtonIndex);
+
                     LinearLayout optionLayout = new LinearLayout(activity);
                     optionLayout.setOrientation(LinearLayout.HORIZONTAL);
                     optionLayout.setGravity(Gravity.CENTER_VERTICAL);
                     optionLayout.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
-                    optionLayout.setClickable(true);
-                    optionLayout.setFocusable(true);
+                    optionLayout.setClickable(!isDisabled);
+                    optionLayout.setFocusable(!isDisabled);
+                    if (!isDisabled && selectableBackgroundResId != 0) {
+                        optionLayout.setBackgroundResource(selectableBackgroundResId);
+                    }
 
-                    // Text
                     TextView textView = new TextView(activity);
-                    textView.setText(option);
+                    textView.setText(optionText);
                     textView.setTextSize(16);
 
-                    // Set text color if provided
-                    if (dest_index == i) {
-                        textView.setTextColor(Color.RED);
-                    }else{
-                        textView.setTextColor(color);
+                    if (isDisabled) {
+                        // Disabled items: 38% opacity on the text color
+                        int disabledColor = (resolvedTextColor & 0x00FFFFFF) | 0x61000000;
+                        textView.setTextColor(disabledColor);
+                    } else if (isDestructiveIndex(options, i)) {
+                        textView.setTextColor(resolvedDestructiveColor);
+                    } else if (isCancel) {
+                        // Cancel button: slightly dimmed to hint it closes the sheet
+                        int cancelColor = (resolvedTextColor & 0x00FFFFFF) | 0xB3000000;
+                        textView.setTextColor(cancelColor);
+                        textView.setTextSize(16);
+                    } else {
+                        textView.setTextColor(resolvedTextColor);
                     }
 
                     LinearLayout.LayoutParams textParams = new LinearLayout.LayoutParams(
@@ -94,35 +156,106 @@ public class RNActionSheetModule extends ReactContextBaseJavaModule {
                             LinearLayout.LayoutParams.WRAP_CONTENT
                     );
                     textView.setLayoutParams(textParams);
-
                     optionLayout.addView(textView);
 
-                    // Click listener
-                    optionLayout.setOnClickListener(v -> {
-                        onItemSelected.invoke(index);
-                        bottomSheetDialog.dismiss();
-                    });
+                    if (!isDisabled) {
+                        optionLayout.setOnClickListener(v -> {
+                            if (callbackInvoked.compareAndSet(false, true)) {
+                                onItemSelected.invoke(index);
+                            }
+                            bottomSheetDialog.dismiss();
+                        });
+                    }
 
                     itemsContainer.addView(optionLayout);
 
-                    // Add divider if not last item
-                    if (i < options.size() - 1) {
+                    // Add divider if not last item — use dpToPx(1) not a raw pixel
+                    if (i < size - 1) {
                         View divider = new View(activity);
                         LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
                                 LinearLayout.LayoutParams.MATCH_PARENT,
-                                1
+                                dpToPx(1)  // was: 1 (pixel) → now: 1dp
                         );
                         dividerParams.setMargins(dpToPx(16), 0, dpToPx(16), 0);
                         divider.setLayoutParams(dividerParams);
-                        divider.setBackgroundColor(0x1A000000);
+                        divider.setBackgroundColor(dividerColor);
                         itemsContainer.addView(divider);
                     }
                 }
             }
 
+            // Handle cancellation (tap outside, back button, swipe down)
+            bottomSheetDialog.setOnCancelListener(dialog -> {
+                if (callbackInvoked.compareAndSet(false, true)) {
+                    onItemSelected.invoke(cancelButtonIndex);
+                }
+            });
+
+            bottomSheetDialog.setOnDismissListener(dialog -> {
+                if (callbackInvoked.compareAndSet(false, true)) {
+                    onItemSelected.invoke(cancelButtonIndex);
+                }
+            });
+
             bottomSheetDialog.setContentView(bottomSheetView);
             bottomSheetDialog.show();
         });
+    }
+
+    private boolean isDestructiveIndex(ReadableMap options, int index) {
+        if (!options.hasKey("destructiveButtonIndex")) {
+            return false;
+        }
+        ReadableType type = options.getType("destructiveButtonIndex");
+        if (type == ReadableType.Number) {
+            return options.getInt("destructiveButtonIndex") == index;
+        } else if (type == ReadableType.Array) {
+            ReadableArray array = options.getArray("destructiveButtonIndex");
+            if (array != null) {
+                for (int i = 0; i < array.size(); i++) {
+                    if (array.getInt(i) == index) {
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+
+    private boolean isDisabledIndex(ReadableMap options, int index) {
+        if (!options.hasKey("disabledButtonIndices")) {
+            return false;
+        }
+        ReadableArray array = options.getArray("disabledButtonIndices");
+        if (array != null) {
+            for (int i = 0; i < array.size(); i++) {
+                if (array.getInt(i) == index) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Resolves a color from the host Activity's theme by attribute ID.
+     * Returns 0 if the attribute is not defined in the theme.
+     */
+    private int resolveColorAttr(Activity activity, int attrId) {
+        TypedValue tv = new TypedValue();
+        if (activity.getTheme().resolveAttribute(attrId, tv, true)) {
+            if (tv.type >= TypedValue.TYPE_FIRST_COLOR_INT
+                    && tv.type <= TypedValue.TYPE_LAST_COLOR_INT) {
+                return tv.data;
+            }
+            // The attribute points to a color resource reference
+            try {
+                return activity.getResources().getColor(tv.resourceId, activity.getTheme());
+            } catch (Exception ignored) {
+                return 0;
+            }
+        }
+        return 0;
     }
 
     private int dpToPx(int dp) {

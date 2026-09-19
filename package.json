@@ -1,6 +1,6 @@
 {
   "name": "@miinos/rnactionsheet",
-  "version": "0.1.2",
+  "version": "1.0.0",
   "description": "Native Action Sheet for React Native",
   "source": "./src/index.tsx",
   "main": "./lib/commonjs/index.js",
@@ -21,11 +21,7 @@
     "src",
     "lib",
     "android",
-    "ios",
-    "cpp",
-    "*.podspec",
     "react-native.config.json",
-    "!ios/build",
     "!android/build",
     "!android/gradle",
     "!android/gradlew",
@@ -178,7 +174,7 @@
   },
   "create-react-native-library": {
     "type": "module-legacy",
-    "languages": "kotlin-objc",
+    "languages": "java",
     "version": "0.43.0"
   }
 }

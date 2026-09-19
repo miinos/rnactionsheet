@@ -2,6 +2,7 @@
   "compilerOptions": {
     "rootDir": ".",
     "paths": {
+      "@miinos/rnactionsheet": ["./src/index"],
       "rnactionsheet": ["./src/index"]
     },
     "allowUnreachableCode": false,

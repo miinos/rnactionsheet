@@ -5,8 +5,8 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     app:layout_behavior="com.google.android.material.bottomsheet.BottomSheetBehavior"
-    style="@style/Theme.Material3.DayNight"
-    android:padding="16dp">
+    android:paddingTop="16dp"
+    android:paddingBottom="16dp">
 
     <TextView
         android:id="@+id/bottom_sheet_title"
@@ -14,20 +14,35 @@
         android:layout_height="wrap_content"
         android:textSize="18sp"
         android:textStyle="bold"
+        android:textColor="?android:attr/textColorPrimary"
         android:paddingStart="16dp"
-        android:paddingTop="16dp"/>
+        android:paddingEnd="16dp"
+        android:paddingBottom="4dp"
+        android:visibility="gone" />
+
     <TextView
         android:id="@+id/bottom_sheet_message"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:textSize="14sp"
+        android:textColor="?android:attr/textColorSecondary"
         android:paddingStart="16dp"
-        android:paddingBottom="16dp"/>
+        android:paddingEnd="16dp"
+        android:paddingBottom="12dp"
+        android:visibility="gone" />
 
-    <LinearLayout
-        android:id="@+id/items_container"
+    <androidx.core.widget.NestedScrollView
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical"/>
+        android:fillViewport="true"
+        android:overScrollMode="ifContentScrolls">
+
+        <LinearLayout
+            android:id="@+id/items_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </androidx.core.widget.NestedScrollView>
 
 </LinearLayout>
