@@ -83,6 +83,7 @@ public class RNActionSheetModule extends ReactContextBaseJavaModule {
             selectableBackgroundResId = rippleValue.resourceId;
         }
 
+        final int resolvedSelectableBackgroundResId = selectableBackgroundResId;
         final int resolvedTextColor = tintColor;
         final int resolvedDestructiveColor = destructiveColor;
         final int dividerColor = (defaultTextColor & 0x00FFFFFF) | 0x1F000000;
@@ -128,8 +129,8 @@ public class RNActionSheetModule extends ReactContextBaseJavaModule {
                     optionLayout.setPadding(dpToPx(16), dpToPx(16), dpToPx(16), dpToPx(16));
                     optionLayout.setClickable(!isDisabled);
                     optionLayout.setFocusable(!isDisabled);
-                    if (!isDisabled && selectableBackgroundResId != 0) {
-                        optionLayout.setBackgroundResource(selectableBackgroundResId);
+                    if (!isDisabled && resolvedSelectableBackgroundResId != 0) {
+                        optionLayout.setBackgroundResource(resolvedSelectableBackgroundResId);
                     }
 
                     TextView textView = new TextView(activity);
